@@ -51,6 +51,10 @@ export default function EligibilityPage({ params }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
 
+  // ── Mode indicator (set by the MODE event from the route handler) ─────────
+  const [agentMode, setAgentMode] = useState<"real" | "simulated" | null>(null);
+  const [missingVars, setMissingVars] = useState<string[]>([]);
+
   const streamRef = useRef<HTMLDivElement>(null);
 
   // ── EventSource: consume /api/eligibility/[id]/stream ─────────────────────
@@ -62,6 +66,13 @@ export default function EligibilityPage({ params }: Props) {
       try {
         data = JSON.parse(e.data as string) as Record<string, unknown>;
       } catch {
+        return;
+      }
+
+      // ── MODE signal — first event, tells us real vs simulated ───────────
+      if (data.type === "MODE") {
+        setAgentMode(data.mode as "real" | "simulated");
+        setMissingVars((data.missingVars as string[]) ?? []);
         return;
       }
 
@@ -143,6 +154,23 @@ export default function EligibilityPage({ params }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Mode badge — appears as soon as the first MODE event arrives */}
+          {agentMode === "real" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-medium text-green-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+              Real TinyFish API
+            </span>
+          )}
+          {agentMode === "simulated" && (
+            <span
+              title={`Set ${missingVars.join(" and ")} in .env.local to enable real API`}
+              className="inline-flex cursor-help items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-300"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              Simulated · missing: {missingVars.join(", ")}
+            </span>
+          )}
+
           {!isDone ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               <span className="relative flex h-1.5 w-1.5">

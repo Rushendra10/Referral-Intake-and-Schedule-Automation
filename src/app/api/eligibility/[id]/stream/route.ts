@@ -8,26 +8,17 @@ import type { EligibilityEvent, EligibilityVerdict } from "@/lib/types";
  * ─────────────────────────────────
  * Server-Sent Events proxy for TinyFish eligibility automation.
  *
- * Flow:
- *   1. Read ZIP + insurance from the extracted referral
- *   2. POST to TinyFish /v1/automation/run-sse for ZIP coverage check
- *   3. POST to TinyFish /v1/automation/run-sse for insurance acceptance check
- *   4. Forward TinyFish PROGRESS events as EligibilityEvent SSE to the browser
- *   5. Emit a final DONE event with the verdict
- *
- * Fallback:
- *   If TINYFISH_API_KEY or TINYFISH_TARGET_BASE_URL are not set,
- *   falls back to the simulated engine (safe for local dev without a key).
- *
- * Env vars required:
+ * Env vars required for real mode:
  *   TINYFISH_API_KEY         — from https://agent.tinyfish.ai/api-keys
  *   TINYFISH_TARGET_BASE_URL — public URL so TinyFish can reach /demo/* pages
- *                              e.g. https://your-app.vercel.app
+ *                              e.g. https://your-app.vercel.app  OR  ngrok URL
+ *
+ * Falls back to simulated engine if either var is missing or placeholder.
+ * Emits a MODE event as the first SSE event so the UI can show which mode is active.
  */
 
 const TINYFISH_API = "https://agent.tinyfish.ai/v1/automation/run-sse";
 
-// ── TinyFish SSE raw event shape ────────────────────────────────────────────
 interface TFEvent {
   type: "STARTED" | "STREAMING_URL" | "PROGRESS" | "HEARTBEAT" | "COMPLETE";
   run_id?: string;
@@ -39,7 +30,6 @@ interface TFEvent {
   timestamp?: string;
 }
 
-// ── Async generator: stream raw events from the TinyFish agent API ──────────
 async function* streamTinyFish(
   url: string,
   goal: string,
@@ -52,7 +42,6 @@ async function* streamTinyFish(
       "X-API-Key": apiKey,
     },
     body: JSON.stringify({ url, goal, browser_profile: "lite" }),
-    // Edge runtime compatible — no duplex needed since we're reading response body
   });
 
   if (!res.ok) {
@@ -90,7 +79,7 @@ async function* streamTinyFish(
   }
 }
 
-// ── Route handler ────────────────────────────────────────────────────────────
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(
   _req: NextRequest,
@@ -102,23 +91,60 @@ export async function GET(
   const targetBase = process.env.TINYFISH_TARGET_BASE_URL?.replace(/\/$/, "");
 
   const encoder = new TextEncoder();
-
-  // Format a SSE data line
   const sseEvent = (data: object) =>
     encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
 
-  // ── FALLBACK: no API key or no public URL → stream simulated events ────────
-  if (!apiKey || !targetBase || apiKey === "sk-tinyfish-YOUR_KEY_HERE") {
-    console.info(
-      "[eligibility/stream] No TinyFish credentials — using simulated fallback engine"
-    );
+  // ── Determine mode and log clearly ──────────────────────────────────────────
+  const missingVars: string[] = [];
+  if (!apiKey || apiKey === "sk-tinyfish-YOUR_KEY_HERE") {
+    missingVars.push("TINYFISH_API_KEY");
+  }
+  if (!targetBase) {
+    missingVars.push("TINYFISH_TARGET_BASE_URL");
+  }
 
+  const isRealMode = missingVars.length === 0;
+
+  if (isRealMode) {
+    console.log(
+      `\n✅ [eligibility/stream] REAL TinyFish API MODE` +
+      `\n   Referral : ${id}` +
+      `\n   Target   : ${targetBase}` +
+      `\n   API Key  : ${apiKey!.slice(0, 20)}...` +
+      `\n   Endpoint : ${TINYFISH_API}\n`
+    );
+  } else {
+    console.log(
+      `\n🟡 [eligibility/stream] SIMULATED FALLBACK MODE` +
+      `\n   Referral : ${id}` +
+      `\n   Reason   : Missing env vars → ${missingVars.join(", ")}` +
+      `\n   Fix      : Set ${missingVars.join(" and ")} in .env.local` +
+      (missingVars.includes("TINYFISH_TARGET_BASE_URL")
+        ? "\n   Tip      : Use ngrok for local dev → ngrok http 3000"
+        : "") +
+      "\n"
+    );
+  }
+
+  // ── FALLBACK: simulated engine ─────────────────────────────────────────────
+  if (!isRealMode) {
     const result = runEligibilityCheck(id);
 
     const stream = new ReadableStream({
       async start(controller) {
+        // Emit MODE event first — UI uses this to show the mode badge
+        controller.enqueue(
+          sseEvent({
+            type: "MODE",
+            mode: "simulated",
+            missingVars,
+            message:
+              `Running in simulated mode. ` +
+              `Set ${missingVars.join(" and ")} to use the real TinyFish API.`,
+          })
+        );
+
         for (const event of result.events) {
-          // Simulate realistic timing but cap at 600ms per event
           const delay = Math.min(event.delayMs, 600);
           if (delay > 0) {
             await new Promise((r) => setTimeout(r, delay));
@@ -126,7 +152,6 @@ export async function GET(
           controller.enqueue(sseEvent(event));
         }
 
-        // Emit DONE signal
         controller.enqueue(
           sseEvent({ type: "DONE", verdict: result.verdict, reason: result.reason })
         );
@@ -143,7 +168,7 @@ export async function GET(
     });
   }
 
-  // ── REAL PATH: call TinyFish for each eligibility check ───────────────────
+  // ── REAL MODE: call TinyFish API ───────────────────────────────────────────
   const referral = getExtractedReferral(id);
   const zip = referral.zip;
   const insurance = referral.insuranceName;
@@ -156,7 +181,16 @@ export async function GET(
       const done = (verdict: EligibilityVerdict, reason: string) =>
         controller.enqueue(sseEvent({ type: "DONE", verdict, reason }));
 
-      // Step 0: announce
+      // First event: MODE indicator for the UI
+      controller.enqueue(
+        sseEvent({
+          type: "MODE",
+          mode: "real",
+          targetBase,
+          message: `Real TinyFish API active. Browsing ${targetBase}`,
+        })
+      );
+
       emit({
         id: `evt-${evtIdx++}`,
         type: "inspect",
@@ -172,6 +206,8 @@ export async function GET(
         targetUrl: zipPagePath,
       });
 
+      console.log(`[eligibility/stream] Calling TinyFish for ZIP check: ${targetBase}${zipPagePath}`);
+
       const zipGoal =
         `Look at the ZIP code coverage table. ` +
         `Check if ZIP code "${zip}" appears in the table AND is marked as "In Coverage" (not "Not Covered"). ` +
@@ -180,13 +216,10 @@ export async function GET(
       let zipCovered = false;
 
       try {
-        for await (const tfEvent of streamTinyFish(
-          `${targetBase}${zipPagePath}`,
-          zipGoal,
-          apiKey
-        )) {
+        for await (const tfEvent of streamTinyFish(`${targetBase}${zipPagePath}`, zipGoal, apiKey!)) {
+          console.log(`[eligibility/stream] TinyFish ZIP event: ${tfEvent.type}${tfEvent.type === "PROGRESS" ? ` — ${tfEvent.purpose}` : ""}`);
+
           if (tfEvent.type === "STREAMING_URL" && tfEvent.streaming_url) {
-            // Pass the live TinyFish browser preview URL to the frontend
             emit({
               id: `evt-${evtIdx++}`,
               type: "navigate",
@@ -202,6 +235,7 @@ export async function GET(
             });
           } else if (tfEvent.type === "COMPLETE") {
             const result = tfEvent.result as { covered?: boolean } | null;
+            console.log(`[eligibility/stream] ZIP result:`, result);
             zipCovered = result?.covered === true;
             emit({
               id: `evt-${evtIdx++}`,
@@ -227,10 +261,7 @@ export async function GET(
           type: "decision",
           message: "Decision: blocked_zip — patient address is outside SunCare's service coverage",
         });
-        done(
-          "blocked_zip",
-          `ZIP code ${zip ?? "(missing)"} is outside SunCare Home Health's service area.`
-        );
+        done("blocked_zip", `ZIP code ${zip ?? "(missing)"} is outside SunCare Home Health's service area.`);
         controller.close();
         return;
       }
@@ -244,6 +275,8 @@ export async function GET(
         targetUrl: insPagePath,
       });
 
+      console.log(`[eligibility/stream] Calling TinyFish for insurance check: ${targetBase}${insPagePath}`);
+
       const insGoal =
         `Look at the insurance payer table on this page. ` +
         `Find a row that matches the plan name "${insurance}". ` +
@@ -252,15 +285,12 @@ export async function GET(
         `  { "status": "manual_review" } — if Status is "Manual Review"\n` +
         `  { "status": "not_accepted" }  — if Status is "Not Accepted" or plan not found`;
 
-      let insuranceStatus: "accepted" | "manual_review" | "not_accepted" =
-        "not_accepted";
+      let insuranceStatus: "accepted" | "manual_review" | "not_accepted" = "not_accepted";
 
       try {
-        for await (const tfEvent of streamTinyFish(
-          `${targetBase}${insPagePath}`,
-          insGoal,
-          apiKey
-        )) {
+        for await (const tfEvent of streamTinyFish(`${targetBase}${insPagePath}`, insGoal, apiKey!)) {
+          console.log(`[eligibility/stream] TinyFish insurance event: ${tfEvent.type}${tfEvent.type === "PROGRESS" ? ` — ${tfEvent.purpose}` : ""}`);
+
           if (tfEvent.type === "STREAMING_URL" && tfEvent.streaming_url) {
             emit({
               id: `evt-${evtIdx++}`,
@@ -277,6 +307,7 @@ export async function GET(
             });
           } else if (tfEvent.type === "COMPLETE") {
             const result = tfEvent.result as { status?: string } | null;
+            console.log(`[eligibility/stream] Insurance result:`, result);
             const s = result?.status;
             insuranceStatus =
               s === "accepted" || s === "manual_review" || s === "not_accepted"
@@ -320,6 +351,8 @@ export async function GET(
         verdict = "eligible";
         reason = `ZIP ${zip} is in SunCare's service area and ${insurance} is a fully accepted plan.`;
       }
+
+      console.log(`[eligibility/stream] Final verdict: ${verdict}`);
 
       emit({
         id: `evt-${evtIdx++}`,

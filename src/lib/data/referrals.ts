@@ -107,9 +107,11 @@ export function getReferralById(id: string): ReferralDetail | undefined {
       hospitalName: "UT Southwestern",
       mrn: "MRN-772901",
       status: "New Referral",
-      receivedAt: new Date().toISOString(),
-      pdfName: "evelyn_brooks_referral.pdf",
-      pdfUrl: "/documents/evelyn_brooks_referral.pdf",
+      // Use a stable timestamp — new Date() differs between SSR and hydration
+      // causing a React hydration mismatch warning.
+      receivedAt: "2026-04-19T00:00:00.000Z",
+      pdfName: "incoming_referral_packet.pdf",
+      pdfUrl: "/documents/incoming_referral_packet.pdf",
       knownFields: {
         dob: "1946-10-09",
         insurance: "Aetna Medicare Advantage Gold",
