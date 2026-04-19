@@ -1,0 +1,410 @@
+# Three-Person Build Plan: Next.js Frontend, LangGraph PDF Processing, TinyFish Eligibility and Scheduling
+
+## Summary
+
+Build the app as a guided demo with a clear division of responsibilities between the two agent systems:
+
+- **LangGraph** handles the referral packet itself:
+  - OCR / document text extraction
+  - field extraction
+  - cross-field validation
+  - final structured patient/referral record
+- **TinyFish** handles browser-style operational checks against dummy web pages:
+  - service ZIP coverage
+  - accepted insurance plans
+  - nurse specialization and schedule lookup
+  - patient outreach / scheduling action flow
+
+The user journey stays:
+
+`Homepage -> Referral Portal -> Referral Review -> Process PDF -> Extracted Patient Info -> Eligibility Check -> Scheduling/Call Orchestration -> Final Scheduled State`
+
+Platform layout:
+- **Frontend**: Next.js + shadcn/ui on Vercel
+- **Backend**: Node service on AWS App Runner
+- **Database / file storage**: Supabase Postgres + Storage
+- **Workflow runtime**: LangGraph for document-processing graph
+- **Browser automation/runtime**: TinyFish for eligibility and scheduling workflows
+
+## App Flow in Product Terms
+
+1. User lands on the homepage and clicks `Demo`.
+2. User sees the referral portal with a few seeded referrals.
+3. Clicking a referral opens a detail page:
+   - PDF on the right
+   - currently known referral fields on the left
+4. Clicking `Process / Extract` starts a **LangGraph document-processing workflow**:
+   - OCRs the PDF
+   - extracts important fields
+   - validates and reconciles them
+5. User is taken to a clean extracted-data page showing:
+   - patient demographics
+   - MRN
+   - phone
+   - address
+   - insurance
+   - ordered services
+   - physician details
+6. From that structured patient record, a **TinyFish eligibility workflow** runs against two dummy pages:
+   - agency ZIP coverage page
+   - agency accepted insurance page
+7. If eligibility passes, a second **TinyFish scheduling workflow** runs:
+   - reads extracted patient info
+   - reasons over ordered services
+   - checks dummy nurse specialization/schedule pages
+   - schedules a visit/call
+   - simulates patient outreach
+8. User sees a final scheduling result:
+   - eligible / not eligible
+   - assigned nurse
+   - proposed visit/call slot
+   - scheduling initialized / blocked
+
+## Team Split
+
+### Person 1: Next.js Migration + App Shell + Route Integration
+Own the frontend platform migration and route-level data integration.
+
+Deliverables:
+- migrate current Vite app to Next.js App Router
+- preserve existing route flow and page semantics
+- set up TypeScript, layout, metadata, global theme
+- wire page-level data fetching to backend APIs
+- connect processing, eligibility, and scheduling pages to SSE/live status
+- handle Vercel deployment and environment wiring
+
+Owned surfaces:
+- `package.json`
+- `next.config.*`
+- `tsconfig.json`
+- `src/app/**`
+- `src/lib/api/**`
+- `src/lib/types/**`
+- frontend env config
+
+### Person 2: shadcn/ui UX + Demo Screens
+Own UI composition and user-facing demo polish.
+
+Deliverables:
+- initialize and manage shadcn/ui
+- refactor current pages into reusable app components
+- keep portal visually “legacy enterprise”
+- make extraction/results/scheduling pages polished and readable
+- build:
+  - portal table
+  - PDF review pane
+  - extracted-field display
+  - workflow timeline
+  - agent status cards
+  - eligibility result panel
+  - scheduling outcome panel
+- implement modal/banner states like `Referral placed` and `Scheduling initialized`
+
+Owned surfaces:
+- `components.json`
+- `src/components/ui/**`
+- `src/components/app/**`
+- styling/theme tokens
+- user-facing status and feedback components
+
+### Person 3: Backend + Supabase + LangGraph + TinyFish
+Own the full backend and all orchestration.
+
+Deliverables:
+- Node backend service on AWS App Runner
+- Supabase schema, migrations, seeds, storage buckets
+- LangGraph OCR/extraction/validation workflow
+- TinyFish eligibility workflow
+- TinyFish scheduling workflow
+- SSE event streams
+- typed contracts for frontend
+- dummy pages/data sources used by TinyFish
+
+Owned surfaces:
+- `backend/` or `server/`
+- Supabase migrations and seeds
+- LangGraph graphs
+- TinyFish adapters and automation scripts
+- dummy operational pages or routes
+- App Runner deployment config
+
+## Core Architecture
+
+### Frontend
+Use **Next.js App Router** with **shadcn/ui** and TypeScript.
+
+Route mapping:
+- `/` homepage
+- `/portal`
+- `/referral/[id]`
+- `/processing/[id]`
+- `/result/[id]`
+- `/eligibility/[id]`
+- `/schedule/[id]`
+
+If preferred, `eligibility` can be folded into `result` or `schedule`, but keeping it separate makes the story clearer and avoids overloading one screen.
+
+### Backend
+Use a persistent Node service with:
+- `Express`
+- `LangGraph.js`
+- `@supabase/supabase-js`
+- `zod`
+- TinyFish SDK
+- structured logging
+- SSE endpoints
+
+### Supabase
+Use Supabase for:
+- relational workflow state
+- extracted patient data
+- seeded nurses and schedules
+- uploaded/seeded PDFs
+- preview images if needed
+
+### Why this split
+- LangGraph is best used for **stateful, deterministic, multi-step document understanding**
+- TinyFish is best used for **web-page interaction and browser-style reasoning over agency portals/pages**
+- This keeps the demo coherent and avoids using TinyFish for work it is not meant to do
+
+## Workflow Design
+
+### 1. LangGraph PDF Processing Workflow
+This graph starts when the user clicks `Process / Extract`.
+
+Graph stages:
+1. `load_document`
+2. `ocr_document`
+3. `extract_candidate_fields`
+4. `normalize_fields`
+5. `validate_mrn`
+6. `validate_demographics`
+7. `validate_contact_info`
+8. `validate_services_and_physician`
+9. `reconcile_conflicts`
+10. `publish_extracted_referral`
+
+Expected outputs:
+- patient name
+- MRN
+- DOB
+- phone
+- address
+- ZIP
+- hospital/discharge source
+- insurance name/plan
+- PCP / ordering physician
+- ordered services
+- validation warnings
+- field confidence / completeness
+
+Important rule:
+- LangGraph owns PDF understanding end to end
+- final output is a normalized `ExtractedReferral` record persisted to Supabase
+
+### 2. TinyFish Eligibility Workflow
+This starts only after LangGraph finishes and the user has a structured patient record.
+
+Inputs:
+- extracted patient ZIP
+- extracted insurance plan
+- patient/referral structured summary
+
+TinyFish pages to inspect:
+- dummy `service area ZIP page`
+- dummy `accepted insurance plans page`
+
+Workflow:
+1. open service ZIP page and verify patient ZIP
+2. open accepted insurance page and verify insurance plan
+3. combine both findings with extracted patient info
+4. emit final eligibility decision:
+   - `eligible`
+   - `blocked_zip`
+   - `blocked_insurance`
+   - `manual_review`
+
+Important rule:
+- TinyFish is using the **nice, already-extracted structured patient info**
+- it is not parsing the PDF
+
+### 3. TinyFish Scheduling Workflow
+This starts only if eligibility passes.
+
+Inputs:
+- structured patient info
+- ordered services
+- dummy nurse specialization page
+- dummy nurse schedule page
+
+Workflow:
+1. read ordered services from extracted referral
+2. determine required nurse capabilities
+3. inspect nurse specialization page
+4. inspect nurse schedule/availability page
+5. choose the best matching nurse and slot
+6. simulate patient outreach / call initiation
+7. return final scheduling result
+
+Outputs:
+- assigned nurse
+- rationale for match
+- proposed call/visit slot
+- patient outreach status
+- scheduling initialized / blocked
+
+## Data Model
+
+### Core tables
+- `referrals`
+- `documents`
+- `workflow_runs`
+- `workflow_events`
+- `agent_runs`
+- `extracted_referrals`
+- `extracted_fields`
+- `eligibility_results`
+- `nurses`
+- `nurse_specializations`
+- `nurse_availability`
+- `scheduled_visits`
+
+### Shared contract types
+Lock these before UI implementation:
+- `ReferralSummary`
+- `ReferralDetail`
+- `ExtractedReferral`
+- `WorkflowEvent`
+- `AgentRun`
+- `EligibilityResult`
+- `SchedulingResult`
+
+## API Contracts
+
+### Referral/document endpoints
+- `GET /api/stats`
+- `GET /api/referrals`
+- `POST /api/referrals/new-demo`
+- `GET /api/referrals/:id`
+
+### LangGraph processing endpoints
+- `POST /api/referrals/:id/process`
+- `GET /api/referrals/:id/process/stream`
+- `GET /api/referrals/:id/result`
+
+### Eligibility endpoints
+- `POST /api/referrals/:id/check-eligibility`
+- `GET /api/referrals/:id/eligibility`
+- `GET /api/referrals/:id/eligibility/stream`
+
+### Scheduling endpoints
+- `POST /api/referrals/:id/schedule`
+- `GET /api/referrals/:id/schedule`
+- `GET /api/referrals/:id/schedule/stream`
+
+## Dummy Operational Pages for TinyFish
+
+TinyFish needs stable browser targets. Build these as simple internal pages or backend-served demo pages:
+
+- `/demo/coverage-zips`
+  - searchable list/table of supported ZIP codes
+- `/demo/accepted-insurance`
+  - searchable list/table of accepted plans
+- `/demo/nurse-specializations`
+  - nurse name -> service capability mapping
+- `/demo/nurse-schedules`
+  - nurse name -> available slots
+
+These pages must be deterministic and easy for TinyFish to inspect.
+
+## Implementation Plan by Person
+
+### Person 1 plan
+1. Scaffold Next.js App Router app in current repo
+2. Convert current routes to `src/app/**`
+3. Replace `react-router-dom` navigation with `next/link` and `next/navigation`
+4. Add typed frontend API client
+5. Wire route pages to backend contracts
+6. Add SSE client hooks for processing, eligibility, and scheduling
+7. Deploy frontend to Vercel
+
+### Person 2 plan
+1. Initialize shadcn/ui
+2. Create app shell and shared UI primitives
+3. Port portal table and referral review UI
+4. Build extraction result page from `ExtractedReferral`
+5. Build eligibility decision page/panel
+6. Build scheduling status and result UI
+7. Add polished loading, error, empty, blocked states
+
+### Person 3 plan
+1. Stand up backend service structure
+2. Create Supabase schema and seed data
+3. Seed PDFs and dummy nurse/coverage/insurance datasets
+4. Implement LangGraph OCR/extraction/validation graph
+5. Persist extracted referral outputs
+6. Implement TinyFish eligibility automation against dummy pages
+7. Implement TinyFish scheduling automation against dummy pages
+8. Emit normalized SSE events and deploy to App Runner
+
+## Milestones
+
+### Milestone 1: Contracts and seeded data
+- Person 3 publishes final type schemas and seed data
+- Person 1 creates Next.js route skeletons
+- Person 2 initializes shadcn and shell components
+
+### Milestone 2: PDF processing story
+- LangGraph processing works end to end on seeded PDFs
+- result page renders extracted referral cleanly
+- processing page streams document-processing events
+
+### Milestone 3: Eligibility story
+- TinyFish checks ZIP coverage and insurance acceptance from dummy pages
+- eligibility decision page works end to end
+- blocked states are clear
+
+### Milestone 4: Scheduling story
+- TinyFish reads services + nurse specialization/schedule pages
+- assigns a nurse and slot
+- final scheduling outcome renders cleanly
+
+### Milestone 5: Demo hardening
+- replay seeded scenarios
+- test blocked and passed referrals
+- confirm smooth click-through from start to finish
+
+## Test Plan
+
+### Core flow
+- homepage -> portal works
+- new referral appears in portal
+- referral detail shows PDF and current metadata
+- processing starts LangGraph and persists extracted result
+- result page renders extracted fields
+- eligibility workflow correctly passes/fails based on ZIP + insurance
+- scheduling workflow correctly matches ordered services to nurse specialization + availability
+- final scheduled state displays correctly
+
+### Failure states
+- OCR/extraction partial failure still produces warnings and partial output
+- missing phone/address/physician remains marked missing
+- ZIP fail blocks scheduling
+- insurance fail blocks scheduling
+- no matching nurse creates blocked/manual-review scheduling state
+
+### Refresh and persistence
+- refreshing `processing`, `eligibility`, or `schedule` restores latest persisted state
+- prior workflow events remain viewable from DB history
+
+## Assumptions and defaults
+
+- Frontend is migrated to Next.js App Router with TypeScript.
+- UI uses shadcn/ui.
+- LangGraph performs PDF OCR, extraction, and validation.
+- TinyFish performs only downstream operational browser workflows.
+- Supabase is used for Postgres and Storage.
+- Backend remains separate from Next.js and runs on AWS App Runner.
+- Dummy operational pages are part of the demo and intentionally stable.
+- No user auth is required for the hackathon build.
+- Seeded referral PDFs and outputs are used so the demo stays smooth and repeatable.

@@ -38,12 +38,13 @@ export default async function ResultPage({
       title="Extracted Referral Summary"
       subtitle="Structured intake data has been assembled from the packet and persisted for downstream operational checks."
       actions={
-        <button
-          disabled
-          className="rounded-lg bg-cyan-400/30 px-5 py-3 text-sm font-semibold text-cyan-100 opacity-70"
+        <Link
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          href={`/eligibility/${id}` as any}
+          className="inline-flex items-center justify-center rounded-lg bg-cyan-400 px-5 py-3 text-sm font-semibold text-black transition hover:bg-cyan-300"
         >
-          Eligibility Orchestration Coming Next
-        </button>
+          Run Eligibility Check →
+        </Link>
       }
     >
       <div className="mb-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-emerald-200">
@@ -86,9 +87,13 @@ export default async function ResultPage({
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-between">
           <Link href="/portal" className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300">
             Back to Portal
+          </Link>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <Link href={`/eligibility/${id}` as any} className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-black hover:bg-cyan-300">
+            Run Eligibility Check →
           </Link>
         </div>
       </div>

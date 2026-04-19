@@ -1,4 +1,5 @@
 import type { KnownReferralFields } from "@/lib/types/referrals";
+import type { NurseRecord } from "@/lib/types/workflows";
 
 export type DemoReferralSeed = {
   id: string;
@@ -183,3 +184,50 @@ Ordered Services: Physical Therapy; Skilled Nursing
   };
 }
 
+/** ZIPs covered by the demo agency */
+export const coveredZips: string[] = [
+  "75201", "75211", "75024", "75201", "75202", "75203", "75204", "75205",
+  "75206", "75207", "75208", "75209", "75210", "75212", "75214",
+  "77002", "77003", "77004", "77005", "77006", "77007", "77008",
+  "73301", "73344",
+];
+
+/** Insurance plans accepted by the demo agency */
+export const acceptedInsurancePlans: string[] = [
+  "Aetna Medicare Advantage Gold",
+  "Aetna Medicare Advantage Silver",
+  "Humana Choice PPO",
+  "Humana Gold Plus HMO",
+  "Blue Cross Blue Shield Medicare",
+  "Blue Cross Blue Shield PPO",
+  "UnitedHealthcare Secure Horizons",
+  "UnitedHealthcare Community Plan",
+];
+
+/** Demo nurse roster with specializations and availability */
+export const nurseSeeds: NurseRecord[] = [
+  {
+    id: "nurse-001",
+    name: "Alice Nguyen, RN",
+    specializations: ["PT", "OT", "Skilled Nursing"],
+    availableSlots: ["2026-04-21 09:00", "2026-04-22 10:00", "2026-04-23 14:00"],
+  },
+  {
+    id: "nurse-002",
+    name: "Marcus Webb, RN",
+    specializations: ["Skilled Nursing", "Wound Care"],
+    availableSlots: ["2026-04-21 11:00", "2026-04-22 13:00", "2026-04-24 09:00"],
+  },
+  {
+    id: "nurse-003",
+    name: "Diane Patel, PT",
+    specializations: ["PT", "ST"],
+    availableSlots: ["2026-04-21 14:00", "2026-04-23 09:00", "2026-04-25 11:00"],
+  },
+  {
+    id: "nurse-004",
+    name: "Carlos Reyes, OT",
+    specializations: ["OT", "PT"],
+    availableSlots: ["2026-04-22 09:00", "2026-04-24 14:00", "2026-04-25 10:00"],
+  },
+];
