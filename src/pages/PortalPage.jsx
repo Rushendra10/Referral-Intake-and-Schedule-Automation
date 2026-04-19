@@ -14,12 +14,13 @@ export default function PortalPage() {
   function handleNewReferral() {
     const newReferral = {
       id: `ref-new-${Date.now()}`,
-      patientName: "Evelyn Brooks",
+      patientName: "John Doe",
       hospitalName: "UT Southwestern",
       mrn: "MRN-772901",
       status: "New Referral",
       receivedAt: "Just now",
-      pdfName: "evelyn_brooks_referral.pdf",
+      pdfName: "sample_referral.pdf",
+      usesSamplePdf: true,
       details: {
         dob: "1946-10-09",
         insurance: "Aetna Medicare",
@@ -71,11 +72,10 @@ export default function PortalPage() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => navigate(`/referral/${row.id}`)}
-                className={`grid w-full grid-cols-[1.3fr_1.3fr_1fr_1fr_1fr] border-b border-white/5 px-6 py-5 text-left transition ${
-                  highlighted
+                className={`grid w-full grid-cols-[1.3fr_1.3fr_1fr_1fr_1fr] border-b border-white/5 px-6 py-5 text-left transition ${highlighted
                     ? "bg-cyan-400/10 ring-1 ring-inset ring-cyan-300/50"
                     : "bg-transparent hover:bg-white/5"
-                }`}
+                  }`}
               >
                 <div className="font-medium">{row.patientName}</div>
                 <div className="text-zinc-300">{row.hospitalName}</div>

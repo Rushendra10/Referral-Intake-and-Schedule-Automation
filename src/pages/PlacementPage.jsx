@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { useNavigate, useParams } from "react-router-dom"
 import PageShell from "../components/layout/PageShell"
-import { getRun, getTinyfishRun, startTinyfishSchedule } from "../services/api"
+import { getRun, getTinyfishRun, startTinyfishPlacement } from "../services/api"
 
 function statusClasses(status) {
   if (status === "complete") return "bg-emerald-400/15 text-emerald-300"
@@ -73,7 +73,7 @@ function Field({ label, value }) {
   )
 }
 
-export default function SchedulingPage() {
+export default function PlacementPage() {
   const { id: runId } = useParams()
   const navigate = useNavigate()
 
@@ -97,12 +97,12 @@ export default function SchedulingPage() {
   useEffect(() => {
     let intervalId
 
-    async function beginSchedule() {
+    async function beginPlacement() {
       try {
-        const start = await startTinyfishSchedule({ runId })
+        const start = await startTinyfishPlacement({ runId })
         setTinyfishRunId(start.tinyfish_run_id)
 
-        async function fetchScheduleRun() {
+        async function fetchPlacementRun() {
           try {
             const data = await getTinyfishRun(start.tinyfish_run_id)
             setTinyfishRun(data)
@@ -110,19 +110,19 @@ export default function SchedulingPage() {
               if (intervalId) clearInterval(intervalId)
             }
           } catch (err) {
-            setError(err.message || "Failed to fetch TinyFish scheduling run.")
+            setError(err.message || "Failed to fetch TinyFish placement run.")
             if (intervalId) clearInterval(intervalId)
           }
         }
 
-        await fetchScheduleRun()
-        intervalId = setInterval(fetchScheduleRun, 1500)
+        await fetchPlacementRun()
+        intervalId = setInterval(fetchPlacementRun, 1500)
       } catch (err) {
-        setError(err.message || "Failed to start TinyFish scheduling.")
+        setError(err.message || "Failed to start TinyFish placement.")
       }
     }
 
-    beginSchedule()
+    beginPlacement()
 
     return () => {
       if (intervalId) clearInterval(intervalId)
@@ -133,15 +133,15 @@ export default function SchedulingPage() {
 
   return (
     <PageShell
-      title="TinyFish Scheduling"
-      subtitle="TinyFish is matching the patient to a nurse, choosing a slot, and initializing outreach."
+      title="Referral Placement"
+      subtitle="TinyFish is submitting the referral into the placement workflow."
       actions={
         done && (
           <button
-            onClick={() => navigate(`/complete/${runId}`, { state: { schedulingResult: tinyfishRun } })}
+            onClick={() => navigate(`/schedule/${runId}`)}
             className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
           >
-            Complete Demo
+            Schedule Visit
           </button>
         )
       }
@@ -155,17 +155,18 @@ export default function SchedulingPage() {
       <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5">
-            <div className="mb-4 text-sm font-medium">Scheduling Context</div>
+            <div className="mb-4 text-sm font-medium">Placement Context</div>
             <div className="grid gap-4">
               <Field label="Patient" value={documentRun?.referral?.patient_name} />
+              <Field label="Insurance" value={documentRun?.referral?.insurance_provider} />
               <Field label="ZIP" value={documentRun?.referral?.zip_code} />
-              <Field label="Services Required" value={documentRun?.referral?.services_required?.join(", ")} />
+              <Field label="Services" value={documentRun?.referral?.services_required?.join(", ")} />
               <Field label="TinyFish Run ID" value={tinyfishRunId || "Starting..."} />
             </div>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5">
-            <div className="mb-4 text-sm font-medium">Scheduling Event Stream</div>
+            <div className="mb-4 text-sm font-medium">Placement Event Stream</div>
             <div className="space-y-3">
               {tinyfishRun?.logs?.map((log, idx) => (
                 <div key={idx} className="rounded-xl border border-white/5 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-300">
@@ -176,23 +177,16 @@ export default function SchedulingPage() {
           </div>
 
           {done && (
-            <div className="space-y-4">
-              <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-emerald-200">
-                Scheduling complete. Nurse assigned and outreach initialized.
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Assigned Nurse" value={tinyfishRun?.assigned_nurse} />
-                <Field label="Visit Slot" value={tinyfishRun?.scheduled_slot} />
-                <Field label="Call Initialized" value={String(tinyfishRun?.call_initialized)} />
-                <Field label="Scheduling Status" value={tinyfishRun?.status} />
-              </div>
+            <div className={`rounded-3xl border p-5 ${tinyfishRun?.placement_submitted ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-amber-400/20 bg-amber-400/10 text-amber-200"}`}>
+              {tinyfishRun?.placement_submitted
+                ? "Placement complete. Referral submitted successfully."
+                : "Placement workflow completed, but submission was not confirmed."}
             </div>
           )}
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5">
-          <div className="mb-4 text-sm font-medium">TinyFish Scheduling Activity</div>
+          <div className="mb-4 text-sm font-medium">TinyFish Placement Activity</div>
           <div className="grid gap-4">
             {tinyfishRun?.agents?.map((agent) => (
               <AgentCard key={agent.id} agent={agent} />

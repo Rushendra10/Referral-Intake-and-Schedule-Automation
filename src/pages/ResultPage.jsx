@@ -42,7 +42,7 @@ export default function ResultPage() {
 
       <div className="space-y-6">
         <Section title="Patient Demographics">
-          <Field label="Patient Name" value="Mary Thompson" />
+          <Field label="Patient Name" value="John Doe" />
           <Field label="MRN" value="MRN-483920" />
           <Field label="DOB" value="1948-02-14" />
           <Field label="Phone" value="(214) 555-0192" />
