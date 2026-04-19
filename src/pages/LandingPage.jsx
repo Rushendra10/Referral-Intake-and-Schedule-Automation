@@ -168,7 +168,7 @@ export default function LandingPage() {
               </svg>
             </div>
             <span style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.3px", color: "var(--cf-text-primary)" }}>
-              RISA AI
+              careflo.ai
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -199,7 +199,7 @@ export default function LandingPage() {
           </h1>
 
           <p style={{ fontSize: "17px", color: "var(--cf-text-secondary)", lineHeight: 1.65, maxWidth: "520px", margin: "0 auto 40px" }}>
-            RISA deploys a coordinated swarm of AI agents to extract, validate,
+            careflo.ai deploys a coordinated swarm of AI agents to extract, validate,
             and route home health referrals — eliminating the 72-hour backlog that
             costs agencies billions and delays patient care.
           </p>
@@ -237,7 +237,7 @@ export default function LandingPage() {
         {/* ── How it works ── */}
         <section style={{ maxWidth: "1120px", margin: "0 auto 80px", padding: "0 32px" }}>
           <div style={{ marginBottom: "36px" }}>
-            <h2 style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "-0.4px", marginBottom: "6px", color: "var(--cf-text-primary)" }}>How RISA works</h2>
+            <h2 style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "-0.4px", marginBottom: "6px", color: "var(--cf-text-primary)" }}>How careflo.ai works</h2>
             <p style={{ color: "var(--cf-text-muted)", fontSize: "14px" }}>Six specialized agents, each with a single responsibility</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
@@ -256,7 +256,7 @@ export default function LandingPage() {
             {/* After */}
             <div style={{ background: "var(--cf-brand-blue-light)", border: S.borderBlue, borderRadius: "var(--cf-radius-lg)", padding: "28px" }}>
               <div style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--cf-brand-blue)", marginBottom: "16px", borderBottom: S.borderBlue, paddingBottom: "10px", width: "100%" }}>
-                After — RISA AI
+                After — careflo.ai
               </div>
               {afterItems.map((item) => (
                 <div key={item} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13.5px", color: "var(--cf-text-secondary)", padding: "7px 0", borderBottom: S.borderBlue }}>
@@ -307,7 +307,7 @@ export default function LandingPage() {
               See the full referral lifecycle
             </h2>
             <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "15px", marginBottom: "28px", lineHeight: 1.6 }}>
-              Watch RISA process a real home health referral end-to-end in under 90 seconds.
+              Watch careflo.ai process a real home health referral end-to-end in under 90 seconds.
             </p>
             <button
               className="cf-btn cf-btn-xl"
@@ -321,7 +321,7 @@ export default function LandingPage() {
 
         {/* ── Footer ── */}
         <footer style={{ borderTop: S.border, padding: "20px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: "1280px", margin: "0 auto", fontSize: "12.5px", color: "var(--cf-text-muted)" }}>
-          <span>RISA AI — Hackathon 2026</span>
+          <span>careflo.ai — Hackathon 2026</span>
           <span>Built with TinyFish Agentic Orchestration</span>
         </footer>
       </div>

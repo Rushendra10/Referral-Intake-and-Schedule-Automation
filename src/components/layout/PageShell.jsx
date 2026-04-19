@@ -19,7 +19,7 @@ function Logo({ navigate }) {
         <circle cx="11" cy="11" r="2.5" fill="#2563eb" />
       </svg>
       <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-        RISA AI
+        careflo.ai
       </span>
     </button>
   )
@@ -101,7 +101,7 @@ export default function PageShell({ title, subtitle, children, actions }) {
 
       {/* Footer */}
       <footer className="mx-auto max-w-7xl border-t border-gray-100 px-6 py-4">
-        <p className="text-[11px] text-gray-400">RISA AI — Agentic Referral Intake · Powered by TinyFish</p>
+        <p className="text-[11px] text-gray-400">careflo.ai — Agentic Referral Intake · Powered by TinyFish</p>
       </footer>
     </div>
   )
