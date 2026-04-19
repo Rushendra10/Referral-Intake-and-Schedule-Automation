@@ -1,7 +1,8 @@
-const API_BASE = "http://localhost:8000"
+// All paths are relative — Vite proxies /api and /files to http://localhost:8000
+// so these work whether you hit port 5173 (Vite) or 8000 (backend) directly.
 
 export async function processSampleDocument() {
-  const res = await fetch(`${API_BASE}/api/documents/process-sample`, {
+  const res = await fetch(`/api/documents/process-sample`, {
     method: "POST",
   })
   if (!res.ok) throw new Error(await res.text())
@@ -12,7 +13,7 @@ export async function processUploadedDocument(file) {
   const formData = new FormData()
   formData.append("file", file)
 
-  const res = await fetch(`${API_BASE}/api/documents/process`, {
+  const res = await fetch(`/api/documents/process`, {
     method: "POST",
     body: formData,
   })
@@ -21,13 +22,13 @@ export async function processUploadedDocument(file) {
 }
 
 export async function getRun(runId) {
-  const res = await fetch(`${API_BASE}/api/runs/${runId}`)
+  const res = await fetch(`/api/runs/${runId}`)
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
 
 export async function startTinyfishEligibility({ runId, insuranceProvider, zipCode }) {
-  const res = await fetch(`${API_BASE}/api/tinyfish/eligibility/start`, {
+  const res = await fetch(`/api/tinyfish/eligibility/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -41,7 +42,7 @@ export async function startTinyfishEligibility({ runId, insuranceProvider, zipCo
 }
 
 export async function startTinyfishPlacement({ runId }) {
-  const res = await fetch(`${API_BASE}/api/tinyfish/placement/start`, {
+  const res = await fetch(`/api/tinyfish/placement/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ run_id: runId }),
@@ -51,7 +52,7 @@ export async function startTinyfishPlacement({ runId }) {
 }
 
 export async function startTinyfishSchedule({ runId }) {
-  const res = await fetch(`${API_BASE}/api/tinyfish/schedule/start`, {
+  const res = await fetch(`/api/tinyfish/schedule/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ run_id: runId }),
@@ -61,7 +62,17 @@ export async function startTinyfishSchedule({ runId }) {
 }
 
 export async function getTinyfishRun(tinyfishRunId) {
-  const res = await fetch(`${API_BASE}/api/tinyfish/runs/${tinyfishRunId}`)
+  const res = await fetch(`/api/tinyfish/runs/${tinyfishRunId}`)
   if (!res.ok) throw new Error(await res.text())
   return res.json()
+}
+
+/** Check if the Python backend is reachable */
+export async function checkBackendHealth() {
+  try {
+    const res = await fetch("/health", { signal: AbortSignal.timeout(2000) })
+    return res.ok
+  } catch {
+    return false
+  }
 }
