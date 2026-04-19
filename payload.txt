@@ -1,0 +1,108 @@
+Extracted referral payload
+type ExtractedReferral = {
+  referralId: string;
+  patientName: string | null;
+  mrn: string | null;
+  dob: string | null;
+  phone: string | null;
+  address: string | null;
+  zip: string | null;
+  hospitalName: string | null;
+  insuranceName: string | null;
+  insurancePlan: string | null;
+  orderedServices: string[];
+  pcp: string | null;
+  orderingPhysician: string | null;
+  warnings: string[];
+  fieldConfidence: Record<string, number>;
+  completeness: number;
+};
+Field names in simple words
+referralId: which referral this result belongs to
+patientName: patient full name
+mrn: medical record number
+dob: date of birth
+phone: patient phone
+address: patient address
+zip: ZIP code
+hospitalName: discharging hospital
+insuranceName: payer name, like Aetna or Humana
+insurancePlan: full plan name
+orderedServices: services needed, like PT, OT, Skilled Nursing
+pcp: primary care physician
+orderingPhysician: referring/ordering doctor
+warnings: problems found during validation
+fieldConfidence: confidence score per field
+completeness: overall completeness score from 0 to 1
+Required vs optional
+In plain terms:
+
+Always present
+These always exist in the JSON:
+
+referralId
+orderedServices
+warnings
+fieldConfidence
+completeness
+May be missing
+These can be null if the packet does not contain them:
+
+patientName
+mrn
+dob
+phone
+address
+zip
+hospitalName
+insuranceName
+insurancePlan
+pcp
+orderingPhysician
+So the object itself is always complete, but some values inside it can be empty.
+
+Mocked IDs
+Current mocked referral IDs come from src/lib/server/demo-data.ts:
+
+ref-001
+ref-002
+ref-003
+ref-004
+New demo referrals are created like:
+
+ref-new-<timestamp>
+Processing runtime IDs are generated dynamically in src/lib/server/processing-graph.ts:
+
+runs: run-<uuid>
+events: evt-<uuid>
+agents: agent-<uuid>
+Fixture format
+The seeded referral fixture format is in src/lib/server/demo-data.ts as DemoReferralSeed.
+
+It looks like this in simple terms:
+
+{
+  id: "ref-001",
+  patientName: "Mary Thompson",
+  hospitalName: "Baylor Scott & White",
+  mrn: "MRN-483920",
+  status: "Pending Review",
+  receivedAt: "2026-04-18T09:15:00.000Z",
+  pdfName: "mary_thompson_referral.pdf",
+  pdfUrl: "/documents/mary_thompson_referral.pdf",
+  knownFields: {
+    dob: "1948-02-14",
+    insurance: "Aetna Medicare Advantage Gold",
+    address: null,
+    phone: "(214) 555-0192",
+    services: ["PT", "OT"],
+    pcp: null
+  },
+  packetText: "Referral Packet ..."
+}
+So each fixture includes:
+
+portal/list data
+known fields for the detail page
+PDF metadata
+raw packet text that LangGraph processes

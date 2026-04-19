@@ -1,0 +1,359 @@
+# Three-Person Plan with Agentic Work Split Evenly
+
+## Summary
+
+Keep the same product story and architecture, but split the agentic implementation across all three people instead of giving all orchestration work to one backend owner.
+
+Core system behavior stays:
+
+- **LangGraph** processes the PDF:
+  - OCR
+  - field extraction
+  - validation
+  - normalized referral output
+- **TinyFish** does downstream browser-style operations:
+  - ZIP coverage check
+  - insurance acceptance check
+  - nurse specialization and schedule lookup
+  - patient outreach / scheduling simulation
+
+Platform stays:
+
+- **Frontend**: Next.js + shadcn/ui on Vercel
+- **Backend**: Node service on AWS App Runner
+- **Database / storage**: Supabase
+- **Workflow runtime**: LangGraph
+- **Browser automation**: TinyFish
+
+The difference is ownership: each person gets one meaningful part of the agentic system, plus their adjacent UI/platform work.
+
+## Balanced Team Split
+
+### Person 1: Next.js Migration + LangGraph Processing Flow
+Own the frontend migration and the **LangGraph document-processing side**.
+
+Deliverables:
+- migrate the current app from Vite to Next.js App Router
+- preserve route flow and current page semantics
+- wire processing UI to live backend events
+- implement the **LangGraph PDF-processing graph**
+- own extracted referral contract and processing event model
+- provide replayable processing runs for demo stability
+
+Agentic ownership:
+- `load_document`
+- `ocr_document`
+- `extract_candidate_fields`
+- `normalize_fields`
+- `publish_extracted_referral`
+- processing SSE event schema for the frontend
+
+Owned surfaces:
+- `src/app/**`
+- `src/lib/api/**`
+- `src/lib/types/**`
+- `backend/langgraph/**`
+- processing event contracts
+
+This person owns the “PDF becomes structured referral” half of the demo.
+
+### Person 2: shadcn/UI + TinyFish Eligibility Flow
+Own the shared UI system and the **TinyFish eligibility workflow**.
+
+Deliverables:
+- initialize shadcn/ui and refactor pages into reusable components
+- build/refine:
+  - portal table
+  - PDF review pane
+  - extraction result page
+  - eligibility decision UI
+  - blocked/manual-review states
+- build the TinyFish target pages for operational checks
+- implement the **TinyFish eligibility orchestration**
+- provide deterministic demo fixtures for eligibility pass/fail scenarios
+
+Agentic ownership:
+- dummy pages:
+  - `/demo/coverage-zips`
+  - `/demo/accepted-insurance`
+- TinyFish flow:
+  - inspect ZIP coverage page
+  - inspect insurance acceptance page
+  - combine both with extracted referral
+  - return `eligible`, `blocked_zip`, `blocked_insurance`, or `manual_review`
+
+Owned surfaces:
+- `components.json`
+- `src/components/ui/**`
+- `src/components/app/**`
+- `src/app/eligibility/[id]/**`
+- `backend/tinyfish/eligibility/**`
+- demo operational pages for ZIP and insurance
+
+This person owns the “Is this patient/referral eligible for the agency?” half of the downstream agent story.
+
+### Person 3: Backend Infrastructure + TinyFish Scheduling Flow
+Own the backend foundation and the **TinyFish scheduling workflow**.
+
+Deliverables:
+- stand up Node backend service
+- own Supabase schema, migrations, seeds, storage buckets
+- define shared API and persistence contracts
+- implement workflow run persistence, event logging, and SSE transport
+- build the TinyFish scheduling workflow
+- create dummy nurse specialization and schedule pages
+- deploy backend to AWS App Runner
+
+Agentic ownership:
+- shared orchestration runtime and workflow persistence
+- dummy pages:
+  - `/demo/nurse-specializations`
+  - `/demo/nurse-schedules`
+- TinyFish scheduling flow:
+  - inspect ordered services from extracted referral
+  - determine required nurse capabilities
+  - inspect specialization and schedule pages
+  - pick best nurse and slot
+  - simulate patient outreach / call initiation
+  - return final scheduling result
+
+Owned surfaces:
+- `backend/server/**`
+- `backend/db/**`
+- `backend/tinyfish/scheduling/**`
+- Supabase migrations and seeds
+- App Runner deployment config
+
+This person owns the “Now that the patient is eligible, schedule the right nurse and initiate outreach” half of the downstream agent story.
+
+## Ownership Boundaries
+
+To avoid overlap, split the agentic system into three lanes:
+
+- **Lane A: LangGraph document intelligence** -> Person 1
+- **Lane B: TinyFish eligibility intelligence** -> Person 2
+- **Lane C: TinyFish scheduling intelligence + persistence runtime** -> Person 3
+
+Person 3 still owns the shared backend skeleton, but not all agent logic. Person 1 and Person 2 each own a real workflow, not just UI around someone else’s backend.
+
+## Shared Contracts to Lock First
+
+These must be agreed before implementation starts:
+
+- `ReferralSummary`
+- `ReferralDetail`
+- `ExtractedReferral`
+- `WorkflowRun`
+- `WorkflowEvent`
+- `AgentRun`
+- `EligibilityResult`
+- `SchedulingResult`
+
+Additional split-specific contracts:
+
+- `ProcessingEvent` -> owned by Person 1
+- `EligibilityEvent` -> owned by Person 2
+- `SchedulingEvent` -> owned by Person 3
+
+## App Flow
+
+1. User lands on homepage and clicks `Demo`
+2. Portal shows seeded referrals
+3. User opens a referral and sees PDF + current fields
+4. User clicks `Process / Extract`
+5. **LangGraph** OCRs and extracts the PDF
+6. Extracted patient/referral data is shown nicely on the result page
+7. User starts eligibility
+8. **TinyFish eligibility workflow** checks ZIP coverage and insurance acceptance using dummy pages
+9. If eligible, user starts scheduling
+10. **TinyFish scheduling workflow** checks nurse specialization and schedule pages, chooses a nurse/slot, and simulates outreach
+11. Final screen shows scheduled / blocked result
+
+## Workflow Breakdown
+
+### 1. LangGraph PDF Processing Workflow — Person 1
+Stages:
+1. `load_document`
+2. `ocr_document`
+3. `extract_candidate_fields`
+4. `normalize_fields`
+5. `validate_mrn`
+6. `validate_demographics`
+7. `validate_contact_info`
+8. `validate_services_and_physician`
+9. `reconcile_conflicts`
+10. `publish_extracted_referral`
+
+Split note:
+- Person 1 owns the graph and extraction stages
+- Person 3 provides persistence hooks and DB write interfaces
+- Person 2 consumes its output in the result and eligibility UI
+
+### 2. TinyFish Eligibility Workflow — Person 2
+Stages:
+1. read extracted ZIP and insurance from structured referral
+2. open ZIP coverage page
+3. verify ZIP coverage
+4. open accepted insurance page
+5. verify plan acceptance
+6. merge findings and emit eligibility result
+
+Outputs:
+- `eligible`
+- `blocked_zip`
+- `blocked_insurance`
+- `manual_review`
+
+Split note:
+- Person 2 owns the TinyFish automation and target pages
+- Person 3 exposes persistence and stream endpoints
+- Person 1 integrates eligibility start/navigation from extracted result pages
+
+### 3. TinyFish Scheduling Workflow — Person 3
+Stages:
+1. read extracted referral and ordered services
+2. determine required nurse capability set
+3. open nurse specialization page
+4. open nurse schedules page
+5. select best nurse and visit/call slot
+6. simulate patient outreach / call initiation
+7. emit final scheduling result
+
+Outputs:
+- assigned nurse
+- rationale
+- proposed slot
+- outreach status
+- scheduling initialized / blocked
+
+Split note:
+- Person 3 owns this workflow end to end
+- Person 2 builds/skins the final scheduling UI
+- Person 1 wires navigation and live page integration
+
+## API Plan
+
+### Referral and document
+- `GET /api/stats`
+- `GET /api/referrals`
+- `POST /api/referrals/new-demo`
+- `GET /api/referrals/:id`
+
+### Processing
+- `POST /api/referrals/:id/process`
+- `GET /api/referrals/:id/process/stream`
+- `GET /api/referrals/:id/result`
+
+### Eligibility
+- `POST /api/referrals/:id/check-eligibility`
+- `GET /api/referrals/:id/eligibility`
+- `GET /api/referrals/:id/eligibility/stream`
+
+### Scheduling
+- `POST /api/referrals/:id/schedule`
+- `GET /api/referrals/:id/schedule`
+- `GET /api/referrals/:id/schedule/stream`
+
+Responsibility:
+- endpoint shells and persistence: Person 3
+- processing payload/event schema: Person 1
+- eligibility payload/event schema: Person 2
+- scheduling payload/event schema: Person 3
+
+## File / Module Split
+
+### Person 1
+- `src/app/**`
+- `src/lib/api/**`
+- `src/lib/types/**`
+- `backend/langgraph/**`
+
+### Person 2
+- `components.json`
+- `src/components/ui/**`
+- `src/components/app/**`
+- `src/app/eligibility/[id]/**`
+- `src/app/demo/coverage-zips/**`
+- `src/app/demo/accepted-insurance/**`
+- `backend/tinyfish/eligibility/**`
+
+### Person 3
+- `backend/server/**`
+- `backend/db/**`
+- `backend/tinyfish/scheduling/**`
+- `backend/events/**`
+- `supabase/**`
+- `src/app/demo/nurse-specializations/**`
+- `src/app/demo/nurse-schedules/**`
+
+## Milestones
+
+### Milestone 1: Contracts and skeletons
+- Person 3 sets up backend service, DB schema skeleton, SSE transport
+- Person 1 creates Next.js route skeletons and processing type contracts
+- Person 2 initializes shadcn/ui and builds eligibility target page skeletons
+
+### Milestone 2: Processing end to end
+- Person 1 ships LangGraph extraction flow on seeded PDFs
+- Person 3 persists extracted outputs and workflow events
+- Person 2 renders result/extracted data cleanly
+
+### Milestone 3: Eligibility end to end
+- Person 2 ships TinyFish eligibility automation + dummy pages
+- Person 3 persists eligibility runs and emits events
+- Person 1 wires navigation/result-to-eligibility transitions
+
+### Milestone 4: Scheduling end to end
+- Person 3 ships TinyFish scheduling automation + nurse data pages
+- Person 2 ships scheduling status/result UI
+- Person 1 wires final route integration and live updates
+
+### Milestone 5: Demo hardening
+- run pass/fail processing scenarios
+- run pass/fail eligibility scenarios
+- run schedulable / unschedulable nurse scenarios
+- verify refresh persistence on processing, eligibility, and scheduling pages
+
+## Test Plan
+
+### Processing
+- PDF processing produces extracted referral output
+- partial OCR failure still yields warnings
+- missing fields remain marked missing, not fabricated
+
+### Eligibility
+- ZIP accepted + insurance accepted -> eligible
+- ZIP rejected -> blocked
+- insurance rejected -> blocked
+- ambiguous plan -> manual review
+
+### Scheduling
+- qualified nurse with availability -> assigned
+- no qualified nurse -> blocked/manual review
+- qualified nurse but no matching slot -> blocked/manual review
+
+### Full flow
+- homepage -> portal -> referral -> processing -> result -> eligibility -> schedule works
+- refresh on any workflow page restores latest state
+- prior workflow events are viewable from persisted history
+
+## Assumptions
+
+- Frontend migrates to Next.js App Router with TypeScript.
+- UI uses shadcn/ui.
+- LangGraph handles PDF understanding only.
+- TinyFish handles downstream agency-operation checks only.
+- Supabase is DB + storage.
+- Backend remains a separate Node service on AWS App Runner.
+- Dummy operational pages are intentionally stable and deterministic.
+- No auth is required in hackathon scope.
+
+## Default Coordination Rule
+
+Each person must ship one real agentic subsystem, not just surrounding UI or plumbing:
+
+- Person 1: LangGraph processing workflow
+- Person 2: TinyFish eligibility workflow
+- Person 3: TinyFish scheduling workflow + shared runtime
+
+That keeps the agentic work distributed evenly while still leaving clean ownership boundaries.

@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+
+/*
+  Design token layer — defines all the CSS variables that shadcn
+  components and our custom components both reference. Dark-only theme.
+*/
+:root {
+  --background: #0b0d10;
+  --foreground: #f4f4f5;
+
+  --card: #111318;
+  --card-foreground: #f4f4f5;
+
+  --popover: #111318;
+  --popover-foreground: #f4f4f5;
+
+  --primary: #22d3ee;        /* cyan-400 — brand accent */
+  --primary-foreground: #000000;
+
+  --secondary: #1e2128;
+  --secondary-foreground: #a1a1aa;
+
+  --muted: #1e2128;
+  --muted-foreground: #71717a;
+
+  --accent: #22d3ee;
+  --accent-foreground: #000000;
+
+  --destructive: #f43f5e;    /* rose-500 — blocked states */
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #1e2128;
+  --ring: #22d3ee;
+  --radius: 0.75rem;
+
+  /* ── Verdict-specific semantic colors ── */
+  --eligible-bg: rgba(16, 185, 129, 0.12);
+  --eligible-border: rgba(16, 185, 129, 0.3);
+  --eligible-text: #6ee7b7;
+
+  --blocked-bg: rgba(244, 63, 94, 0.12);
+  --blocked-border: rgba(244, 63, 94, 0.3);
+  --blocked-text: #fda4af;
+
+  --manual-bg: rgba(245, 158, 11, 0.12);
+  --manual-border: rgba(245, 158, 11, 0.3);
+  --manual-text: #fcd34d;
+
+  --pending-bg: rgba(113, 113, 122, 0.12);
+  --pending-border: rgba(113, 113, 122, 0.3);
+  --pending-text: #a1a1aa;
+}
+
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Keyframe animations ── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(34, 211, 238, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease both;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-in-out infinite;
+}
